@@ -67,7 +67,7 @@ function PatientHub() {
         }
         setTranslated((prev) => {
           const n = { ...prev };
-          missing.forEach((s, i) => (n[`${lang}:${s}`] = r.texts[i]));
+          missing.forEach((s, i) => (n[`${lang}:${s}`] = r.texts[i] ?? s));
           return n;
         });
       })

@@ -18,7 +18,7 @@ async function gemma(prompt: string): Promise<string> {
 }
 
 async function gemmaOnce(model: string, prompt: string): Promise<string> {
-  const key = process.env.GEMMA_API_KEY;
+  const key = process.env['GEMMA_API_KEY'];
   if (!key) throw new Error("Gemma key is not configured.");
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
