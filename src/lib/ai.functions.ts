@@ -2,13 +2,26 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 // Free Gemma model on Google AI Studio (Gemini API).
-const GEMMA_MODEL = "gemma-4-31b-it";
+const GEMMA_MODELS = ["gemma-4-31b-it", "gemma-4-26b-a4b-it"];
 
 async function gemma(prompt: string): Promise<string> {
+  let lastErr: unknown;
+  for (const model of GEMMA_MODELS) {
+    try {
+      return await gemmaOnce(model, prompt);
+    } catch (e) {
+      lastErr = e;
+      if (e instanceof Error && /key was rejected/.test(e.message)) break;
+    }
+  }
+  throw lastErr;
+}
+
+async function gemmaOnce(model: string, prompt: string): Promise<string> {
   const key = process.env.GEMMA_API_KEY;
   if (!key) throw new Error("Gemma key is not configured.");
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMMA_MODEL}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
@@ -26,19 +39,28 @@ async function gemma(prompt: string): Promise<string> {
     throw new Error("AI request failed.");
   }
   const json = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[];
   };
-  return json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  const parts = json.candidates?.[0]?.content?.parts ?? [];
+  return parts.filter((p) => !p.thought).map((p) => p.text ?? "").join("");
 }
 
 // Gemma has no JSON mode, so pull the first JSON value out of its reply.
 function extractJson<T>(text: string): T {
   const cleaned = text.replace(/```(?:json)?/g, "");
-  const start = cleaned.search(/[[{]/);
-  const open = cleaned[start];
-  const end = cleaned.lastIndexOf(open === "[" ? "]" : "}");
-  if (start < 0 || end < start) throw new Error("AI returned an unreadable answer.");
-  return JSON.parse(cleaned.slice(start, end + 1)) as T;
+  // Gemma may reason before answering; try candidate JSON values from the end.
+  for (let i = cleaned.length - 1; i >= 0; i--) {
+    const ch = cleaned[i];
+    if (ch !== "[" && ch !== "{") continue;
+    const end = cleaned.lastIndexOf(ch === "[" ? "]" : "}");
+    if (end <= i) continue;
+    try {
+      return JSON.parse(cleaned.slice(i, end + 1)) as T;
+    } catch {
+      /* keep looking */
+    }
+  }
+  throw new Error("AI returned an unreadable answer.");
 }
 
 export type TriageChip = {
