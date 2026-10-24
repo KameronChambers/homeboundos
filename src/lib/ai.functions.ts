@@ -96,12 +96,22 @@ Service: ${data.service}
 Mobility tier: ${data.mobility}
 Booking note: ${data.note}`;
     try {
-      const out = extractJson<{ chips: TriageChip[] }>(await gemma(prompt), (v) =>
-        Array.isArray((v as { chips?: unknown })?.chips),
+      const out = extractJson<{ chips: TriageChip[] } | TriageChip[]>(
+        await gemma(prompt),
+        (v) => Array.isArray(v) || Array.isArray((v as { chips?: unknown })?.chips),
       );
-      const levels = ["critical", "caution", "barrier", "clinical"];
+      const list = Array.isArray(out) ? out : out.chips;
+      const cat: Record<TriageChip["level"], string> = {
+        critical: "Mobility Warning",
+        caution: "Equipment Alert",
+        barrier: "Environmental Barrier",
+        clinical: "Clinical Precaution",
+      };
       return {
-        chips: (out.chips ?? []).filter((c) => levels.includes(c.level) && c.title).slice(0, 5),
+        chips: list
+          .filter((c) => c && c.level in cat && c.title)
+          .map((c) => ({ ...c, category: cat[c.level] }))
+          .slice(0, 5),
       };
     } catch (e) {
       return { chips: [], error: e instanceof Error ? e.message : "AI triage failed." };
