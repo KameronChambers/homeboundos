@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
 import { CareProvider } from "../lib/care-store";
 import { TopNav } from "../components/TopNav";
+import { PortalLanguageProvider } from "../lib/portal-language";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -126,9 +127,11 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <CareProvider>
+        <PortalLanguageProvider>
         <TopNav />
         <Outlet />
         <Toaster position="top-right" richColors />
+        </PortalLanguageProvider>
       </CareProvider>
     </QueryClientProvider>
   );

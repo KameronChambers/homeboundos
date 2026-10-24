@@ -208,19 +208,27 @@ export function seedNotes(): PassportNote[] {
   ];
 }
 
-export type SortKey = "longest" | "shortest" | "recent" | "oldest";
+export type SortKey = "recent" | "oldest" | "urgencyHigh" | "urgencyLow";
 
 export function sortTickets(list: Ticket[], key: SortKey, now: number): Ticket[] {
   const c = [...list];
-  const wait = (t: Ticket) => now - t.createdAt;
+  const urgency = (t: Ticket) => t.urgency === "Immediate" ? 1 : 0;
   switch (key) {
-    case "longest":
     case "oldest":
-      return c.sort((a, b) => wait(b) - wait(a));
-    case "shortest":
+      return c.sort((a, b) => a.createdAt - b.createdAt);
     case "recent":
-      return c.sort((a, b) => wait(a) - wait(b));
+      return c.sort((a, b) => b.createdAt - a.createdAt);
+    case "urgencyHigh":
+      return c.sort((a, b) => urgency(b) - urgency(a) || b.createdAt - a.createdAt);
+    case "urgencyLow":
+      return c.sort((a, b) => urgency(a) - urgency(b) || b.createdAt - a.createdAt);
   }
+}
+
+export function liftCosts(voucherApplied: boolean) {
+  const lift = 500;
+  const voucher = voucherApplied ? 500 : 0;
+  return { lift, voucher, total: lift - voucher };
 }
 
 // Demo timeline after dispatch (compressed so the demo moves visibly).

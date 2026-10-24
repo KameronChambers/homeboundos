@@ -4,10 +4,12 @@ import "leaflet/dist/leaflet.css";
 import { HOME, HOSPITAL } from "@/lib/care-data";
 
 // Browser-only: rendered via React.lazy behind <ClientOnly>.
-export default function DetroitMap({ progress }: { progress: number }) {
+export default function DetroitMap({ progress, homeLabel = HOME.label, destinationLabel = HOSPITAL.label, mapLabel = "Map of Detroit transport route" }: { progress: number; homeLabel?: string; destinationLabel?: string; mapLabel?: string }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<LMap | null>(null);
   const van = useRef<Marker | null>(null);
+  const home = useRef<Marker | null>(null);
+  const destination = useRef<Marker | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,8 +29,8 @@ export default function DetroitMap({ progress }: { progress: number }) {
       }).addTo(m);
       const pin = (emoji: string) =>
         L.divIcon({ html: `<div style="font-size:26px;line-height:1">${emoji}</div>`, className: "", iconSize: [28, 28], iconAnchor: [14, 14] });
-      L.marker([HOME.lat, HOME.lng], { icon: pin("🏠") }).addTo(m).bindPopup(HOME.label);
-      L.marker([HOSPITAL.lat, HOSPITAL.lng], { icon: pin("🏥") }).addTo(m).bindPopup(HOSPITAL.label).openPopup();
+      home.current = L.marker([HOME.lat, HOME.lng], { icon: pin("🏠") }).addTo(m).bindPopup(homeLabel);
+      destination.current = L.marker([HOSPITAL.lat, HOSPITAL.lng], { icon: pin("🏥") }).addTo(m).bindPopup(destinationLabel).openPopup();
       L.polyline(
         [
           [HOME.lat, HOME.lng],
@@ -47,9 +49,14 @@ export default function DetroitMap({ progress }: { progress: number }) {
   }, []);
 
   useEffect(() => {
+    home.current?.setPopupContent(homeLabel);
+    destination.current?.setPopupContent(destinationLabel);
+  }, [homeLabel, destinationLabel]);
+
+  useEffect(() => {
     const p = Math.min(1, Math.max(0, progress));
     van.current?.setLatLng([HOME.lat + (HOSPITAL.lat - HOME.lat) * p, HOME.lng + (HOSPITAL.lng - HOME.lng) * p]);
   }, [progress]);
 
-  return <div ref={el} className="h-72 w-full overflow-hidden rounded-xl border" aria-label="Map of Detroit transport route" />;
+  return <div ref={el} className="h-72 w-full overflow-hidden rounded-xl border" aria-label={mapLabel} />;
 }

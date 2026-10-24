@@ -1,7 +1,11 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { Activity } from "lucide-react";
+import { usePortalLanguage } from "@/lib/portal-language";
 
 export function TopNav() {
+  const { tr } = usePortalLanguage();
+  const patientPage = useLocation().pathname === "/";
+  const text = (value: string) => patientPage ? tr(value) : value;
   const tab =
     "rounded-lg px-4 py-2 text-sm font-bold transition-colors text-muted-foreground hover:bg-muted hover:text-foreground";
   return (
@@ -13,19 +17,19 @@ export function TopNav() {
           </div>
           <div>
             <div className="text-lg font-bold leading-tight">HomeBound OS</div>
-            <div className="text-xs text-muted-foreground">Detroit Regional Care &amp; Mobility Grid</div>
+            <div className="text-xs text-muted-foreground">{text("Detroit Regional Care & Mobility Grid")}</div>
           </div>
         </div>
         <span className="inline-flex items-center gap-2 rounded-full bg-success-soft px-3 py-1 text-xs font-bold text-success">
           <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
-          Active • HL7 FHIR R4 connection (demo)
+          {text("Active • HL7 FHIR R4 connection (demo)")}
         </span>
         <nav className="ml-auto flex gap-1">
           <Link to="/" className={tab} activeOptions={{ exact: true }} activeProps={{ className: "bg-secondary text-secondary-foreground" }}>
-            Patient Hub
+            {text("Patient Hub")}
           </Link>
           <Link to="/provider" className={tab} activeProps={{ className: "bg-secondary text-secondary-foreground" }}>
-            Provider Hub
+            {text("Provider Hub")}
           </Link>
         </nav>
       </div>

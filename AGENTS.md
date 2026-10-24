@@ -13,3 +13,4 @@
 - AI calls go through server functions in src/lib/ai.functions.ts using the GEMMA_API_KEY secret (Google AI Studio); never call AI from the browser — keeps the key private.
 - Demo state (tickets, passport notes, dispatch) lives in a React context persisted to localStorage (src/lib/care-store.tsx) — no backend yet; syncs across tabs via the storage event.
 - Pure business rules (sorting, tracker timeline, HCPCS codes) live in src/lib/care-data.ts with tests in src/test — keep them side-effect free.
+- Patient portal language uses a shared browser-safe dictionary/context in src/lib/portal-language.tsx; only new free-text notes use server-side Gemma translation, so static labels switch instantly without changing layout direction.
