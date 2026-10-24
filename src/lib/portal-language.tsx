@@ -70,7 +70,7 @@ const dictionary: Record<string, [string, string]> = {
   'Sacral skin intact, mild redness (blanchable). Braden Scale 14. Reinforced 2-hour repositioning schedule with caregiver.': ['Piel del sacro intacta, enrojecimiento leve que palidece al presionar. Escala de Braden 14. Se reforzó con el cuidador el cambio de posición cada 2 horas.', 'جلد منطقة العجز سليم مع احمرار خفيف يزول بالضغط. مقياس Braden 14. تم تأكيد تغيير الوضعية كل 2 ساعات مع مقدم الرعاية.'],
   'Bed-level range-of-motion exercises tolerated well. Not safe for stand-pivot transfer; continue 2-person mechanical lift transfers.': ['Toleró bien los ejercicios de movilidad articular en cama. No es seguro trasladarlo de pie con giro; continuar con grúa mecánica y ayuda de 2 personas.', 'تحمّل تمارين مدى الحركة في السرير جيدًا. النقل بالوقوف والالتفاف غير آمن؛ استمر بالنقل برافعة ميكانيكية بمساعدة 2 أشخاص.'],
 };
-const services = [
+const services: [string, string, string][] = [
  ["Physician (MD/DO)", "Médico (MD/DO)", "طبيب (MD/DO)"],
  ["Registered Nurse (RN)", "Enfermero registrado (RN)", "ممرض مسجّل (RN)"],
  ["Registered Dietitian Nutritionist (RDN)", "Dietista nutricionista registrado (RDN)", "اختصاصي تغذية مسجّل (RDN)"],

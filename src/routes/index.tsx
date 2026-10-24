@@ -77,6 +77,7 @@ function PatientHub() {
   const trackerRef = useRef<HTMLDivElement>(null);
   const active = care.tickets.find((x) => x.id === care.activeTicketId);
   const ts = trackerState(care.dispatchedAt, now);
+  const statusText = ["Your provider has been assigned.", "Your provider is on the way.", "Your provider has arrived.", "Your care visit is in progress.", "Your care visit is complete."][ts.stage] ?? "Waiting for a provider to claim your request.";
 
   return (
     <main dir="ltr" lang={lang} className="mx-auto max-w-7xl space-y-6 px-4 py-6">
@@ -161,7 +162,14 @@ function PatientHub() {
                   </div>
                 </div>
               )}
-              <div className="mt-5">
+              <div className="mt-5 space-y-3">
+                <div className="space-y-2" aria-live="polite">
+                  <div className="flex flex-wrap justify-between gap-2 text-sm font-bold">
+                    <span>{tr(statusText)}</span>
+                    <span className="text-muted-foreground">{tr("Demo progress")}</span>
+                  </div>
+                  <Progress value={ts.stage < 0 ? 0 : (ts.stage + 1) * 20} aria-label={t.tracker} />
+                </div>
                 <ClientOnly fallback={<div className="h-72 rounded-xl bg-muted" />}>
                   <Suspense fallback={<div className="h-72 rounded-xl bg-muted" />}>
                     <DetroitMap progress={ts.progress} homeLabel={tr("Home • Morningside (48224)")} destinationLabel={tr("Destination: Henry Ford Hospital • 2799 W Grand Blvd, Detroit, MI 48202")} mapLabel={tr("Map of Detroit transport route")} />
@@ -231,7 +239,7 @@ function RequestCare({ title, submitLabel, onView }: { title: string; submitLabe
         urgency,
         scheduledAt: when ? new Date(when).toLocaleString() : undefined,
         note:
-          (note || `${tr(PATIENT.mobility)}.`) +
+          (note || `${PATIENT.mobility}.`) +
           (isOffice ? ` Office visit: ${service}. ${transport ? `Transport needed (${mobility}).` : "No transport needed."}${insId ? ` Coverage ID on file.` : ""}` : ""),
         mobility: isOffice ? mobility : "Stretcher",
       });
@@ -253,7 +261,7 @@ function RequestCare({ title, submitLabel, onView }: { title: string; submitLabe
           <Button variant="outline"
             key={m.k}
             onClick={() => setMode(m.k)}
-            className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-base font-bold transition ${mode === m.k ? "border-primary bg-secondary" : "border-border hover:bg-muted"}`}
+            className={`h-auto min-h-24 min-w-0 flex-col items-center gap-2 whitespace-normal rounded-xl border-2 px-2 py-4 text-base font-bold transition ${mode === m.k ? "border-primary bg-secondary" : "border-border hover:bg-muted"}`}
           >
             <m.icon className="h-7 w-7" /> {tr(m.label)}
           </Button>
@@ -272,7 +280,7 @@ function RequestCare({ title, submitLabel, onView }: { title: string; submitLabe
           <span className="text-sm font-bold">{tr("Timing")}</span>
           <div className="grid grid-cols-2 gap-2">
             {(["Immediate", "Scheduled"] as const).map((u) => (
-              <Button variant="outline" key={u} onClick={() => setUrgency(u)} className={`rounded-xl border-2 px-3 py-3 font-bold ${urgency === u ? "border-primary bg-secondary" : ""}`}>
+              <Button variant="outline" key={u} onClick={() => setUrgency(u)} className={`h-auto min-h-12 whitespace-normal rounded-xl border-2 px-3 py-3 font-bold ${urgency === u ? "border-primary bg-secondary" : ""}`}>
                 {tr(u === "Immediate" ? "As soon as possible" : "Schedule")}
               </Button>
             ))}
@@ -295,7 +303,7 @@ function RequestCare({ title, submitLabel, onView }: { title: string; submitLabe
                 <span className="text-sm font-bold">{tr("Mobility level")}</span>
                 <div className="grid grid-cols-3 gap-2">
                   {(["Ambulatory", "Wheelchair", "Stretcher"] as Mobility[]).map((m) => (
-                    <Button variant="outline" key={m} onClick={() => setMobility(m)} className={`rounded-xl border-2 px-3 py-3 font-bold ${mobility === m ? "border-primary bg-secondary" : ""}`}>
+                    <Button variant="outline" key={m} onClick={() => setMobility(m)} className={`h-auto min-h-12 min-w-0 whitespace-normal rounded-xl border-2 px-2 py-3 font-bold ${mobility === m ? "border-primary bg-secondary" : ""}`}>
                       {tr(m)}
                     </Button>
                   ))}
@@ -325,7 +333,7 @@ function RequestCare({ title, submitLabel, onView }: { title: string; submitLabe
         {phase === "routing" && <span className="text-muted-foreground">{tr("Routing request to Detroit Regional Dispatch Queue…")}</span>}
         {phase === "done" && (
           <Button variant="outline" size="lg" className="h-12" onClick={onView}>
-            View in Live Tracker →
+            {tr("View in Live Tracker →")}
           </Button>
         )}
       </div>
@@ -374,7 +382,7 @@ function Passport({ title, addLabel, tr }: { title: string; addLabel: string; tr
                 toast.success(tr("Note added to the health passport"));
               }}
             >
-              Save note
+              {tr("Save note")}
             </Button>
           </DialogFooter>
         </DialogContent>
