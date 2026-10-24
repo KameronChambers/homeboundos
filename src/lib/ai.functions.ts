@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 // Free Gemma model on Google AI Studio (Gemini API).
-const GEMMA_MODEL = "gemma-3-27b-it";
+const GEMMA_MODEL = "gemma-4-31b-it";
 
 async function gemma(prompt: string): Promise<string> {
   const key = process.env.GEMMA_API_KEY;
