@@ -54,7 +54,7 @@ export function CareProvider({ children }: { children: ReactNode }) {
 
   const addTicket: Ctx["addTicket"] = (t) => {
     const nums = state.tickets.map((x) => Number(x.id.slice(2))).filter(Boolean);
-    const id = `T-${Math.max(1046, ...nums) + 1}`;
+    const id = `T-${Math.max(1047, ...nums) + 1}`;
     update((s) => ({
       ...s,
       tickets: [{ ...t, id, createdAt: Date.now(), status: "queued" }, ...s.tickets],

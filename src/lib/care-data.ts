@@ -169,7 +169,7 @@ export function seedTickets(): Ticket[] {
       patient: "Evelyn Ward",
       age: 79,
       zip: "48214",
-      service: "Mobile Dentist",
+      service: "Mobile Dentist (DDS/DMD)",
       mode: "Home",
       urgency: "Scheduled",
       scheduledAt: "Tomorrow 13:00",
