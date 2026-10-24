@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NEMT_HCPCS, liftCosts, sortTickets, trackerState, type Ticket } from "@/lib/care-data";
+import { NEMT_HCPCS, liftCosts, sortTickets, tripKind, tripState, HOME, HOSPITAL, type Ticket } from "@/lib/care-data";
 
 const mk = (id: string, createdAt: number) => ({ id, createdAt }) as Ticket;
 
@@ -33,8 +33,30 @@ describe("care rules", () => {
     expect(liftCosts(true)).toEqual({ lift: 500, voucher: 500, total: 0 });
   });
 
-  it("starts the tracker with a 14 minute ETA after dispatch", () => {
-    expect(trackerState(1000, 1000).etaMin).toBe(14);
-    expect(trackerState(null, 1000).stage).toBe(-1);
+  it("starts the van at the hospital with a 14 minute ETA", () => {
+    const s = tripState("home", 1000, 1000);
+    expect(s.etaMin).toBe(14);
+    expect(s.pos).toEqual({ lat: HOSPITAL.lat, lng: HOSPITAL.lng });
+    expect(tripState("home", null, 1000).stage).toBe(-1);
+  });
+  it("home visit: care at home, completed back at the hospital", () => {
+    expect(tripState("home", 0, 26000).stages[2]).toBe("Care In Progress");
+    expect(tripState("home", 0, 26000).pos.lat).toBe(HOME.lat);
+    const end = tripState("home", 0, 10_000_000);
+    expect(end.stages[end.stage]).toBe("Completed");
+    expect(end.pos.lat).toBe(HOSPITAL.lat);
+  });
+  it("office visit with transport: care at hospital, completed at home", () => {
+    const care = tripState("office", 0, 46000);
+    expect(care.stages[care.stage]).toBe("Care In Progress");
+    expect(care.pos.lat).toBe(HOSPITAL.lat);
+    const end = tripState("office", 0, 10_000_000);
+    expect(end.stages[end.stage]).toBe("Completed");
+    expect(end.pos.lat).toBe(HOME.lat);
+  });
+  it("telehealth and office visits without transport do not start the tracker", () => {
+    expect(tripKind({ mode: "Virtual", service: "Physician (MD/DO)" })).toBe("none");
+    expect(tripKind({ mode: "Office", service: "Physician (MD/DO)", transport: false })).toBe("none");
+    expect(tripState("none", 0, 5000).stage).toBe(-1);
   });
 });

@@ -10,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCare, useNow } from "@/lib/care-store";
-import { NEMT_HCPCS, PATIENT, SERVICES, STAGES, UNIT, trackerState, liftCosts, type Mobility, type ServiceType } from "@/lib/care-data";
+import { Passport } from "@/components/PassportSheet";
+import { NEMT_HCPCS, PATIENT, SERVICES, UNIT, tripKind, tripState, liftCosts, type Mobility, type ServiceType } from "@/lib/care-data";
 import { translateTexts } from "@/lib/ai.functions";
 
 const DetroitMap = lazy(() => import("@/components/DetroitMap"));
@@ -76,8 +77,9 @@ function PatientHub() {
   const tr = (s: string) => (lang === "en" ? s : translated[`${lang}:${s}`] ?? localize(s, lang));
   const trackerRef = useRef<HTMLDivElement>(null);
   const active = care.tickets.find((x) => x.id === care.activeTicketId);
-  const ts = trackerState(care.dispatchedAt, now);
-  const statusText = ["Your provider has been assigned.", "Your provider is on the way.", "Your provider has arrived.", "Your care visit is in progress.", "Your care visit is complete."][ts.stage] ?? "Waiting for a provider to claim your request.";
+  const kind = tripKind(active);
+  const ts = tripState(kind, care.dispatchedAt, now);
+  const statusText = !active ? "No active request yet." : kind === "none" ? "This visit does not need a van, so there is nothing to track." : ts.stage < 0 ? "Waiting for a provider to claim your request." : ts.status;
 
   return (
     <main dir="ltr" lang={lang} className="mx-auto max-w-7xl space-y-6 px-4 py-6">
@@ -125,12 +127,12 @@ function PatientHub() {
             <Section title={t.tracker} aside={active && <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">#{active.id}</span>}>
               {ts.stage < 0 ? (
                 <p className="text-muted-foreground">
-                  {active ? `#${active.id} — ${tr("Waiting for a provider to claim your request.")}` : tr("No active request yet.")}
+                  {active ? `#${active.id} — ${tr(statusText)}` : tr(statusText)}
                 </p>
               ) : (
                 <div className="space-y-5">
-                  <ol className="grid grid-cols-5 gap-2">
-                    {STAGES.map((s, i) => (
+                  <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${ts.stages.length}, minmax(0, 1fr))` }}>
+                    {ts.stages.map((s, i) => (
                       <li key={s} className="space-y-2 text-center">
                         <div className={`h-2 rounded-full ${i <= ts.stage ? "bg-primary" : "bg-muted"}`} />
                         <div className={`text-xs font-bold md:text-sm ${i <= ts.stage ? "text-foreground" : "text-muted-foreground"}`}>
@@ -169,11 +171,11 @@ function PatientHub() {
                     <span>{tr(statusText)}</span>
                     <span className="text-muted-foreground">{tr("Demo progress")}</span>
                   </div>
-                  <Progress value={ts.stage < 0 ? 0 : (ts.stage + 1) * 20} aria-label={t.tracker} />
+                  <Progress value={ts.stage < 0 ? 0 : ((ts.stage + 1) / ts.stages.length) * 100} aria-label={t.tracker} />
                 </div>
                 <ClientOnly fallback={<div className="h-72 rounded-xl bg-muted" />}>
                   <Suspense fallback={<div className="h-72 rounded-xl bg-muted" />}>
-                    <DetroitMap progress={ts.progress} homeLabel={tr("Home • Morningside (48224)")} destinationLabel={tr("Destination: Henry Ford Hospital • 2799 W Grand Blvd, Detroit, MI 48202")} mapLabel={tr("Map of Detroit transport route")} />
+                    <DetroitMap pos={ts.pos} homeLabel={tr("Home • Morningside (48224)")} destinationLabel={tr("Destination: Henry Ford Hospital • 2799 W Grand Blvd, Detroit, MI 48202")} mapLabel={tr("Map of Detroit transport route")} />
                   </Suspense>
                 </ClientOnly>
               </div>
@@ -237,6 +239,7 @@ function RequestCare({ title, submitLabel, onView }: { title: string; submitLabe
         zip: PATIENT.zip,
         service: isOffice && transport ? "NEMT Transport" : service,
         mode,
+        transport: isOffice ? transport : undefined,
         urgency,
         scheduledAt: when ? new Date(when).toLocaleString() : undefined,
         note:
@@ -342,81 +345,6 @@ function RequestCare({ title, submitLabel, onView }: { title: string; submitLabe
   );
 }
 
-function Passport({ title, addLabel, tr }: { title: string; addLabel: string; tr: (s: string) => string }) {
-  const { notes, addNote } = useCare();
-  const { lang } = usePortalLanguage();
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const sorted = [...notes].sort((a, b) => b.at - a.at);
-  return (
-    <Sheet>
-      <SheetTrigger asChild><Button variant="outline" size="lg" className="h-auto min-h-12 w-full justify-start whitespace-normal text-start"><BookOpen className="h-5 w-5 shrink-0" />{title}</Button></SheetTrigger>
-      <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-xl [&>button]:text-primary-foreground" dir="ltr" lang={lang} closeLabel={tr("Close")}>
-        <SheetHeader className="flex-row items-center gap-4 space-y-0 bg-header-gradient p-6 pr-12 text-start text-primary-foreground">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary"><BookOpen className="h-6 w-6" /></div>
-          <div>
-            <SheetTitle className="text-xl text-primary-foreground">{title}</SheetTitle>
-            <SheetDescription className="text-primary-foreground/80">{tr("Integrated cross-discipline record for")} {PATIENT.name} {tr("(demo)")}</SheetDescription>
-          </div>
-        </SheetHeader>
-        <div className="grid grid-cols-3 gap-3 border-b bg-muted/50 p-4">
-          {[
-            [tr("Fall risk"), tr("High / Bed-bound"), "text-critical"],
-            [tr("Transfer"), tr("2-Person Lift"), "text-foreground"],
-            [tr("Next follow-up"), tr("Cardiology"), "text-primary"],
-          ].map(([l, v, c]) => (
-            <div key={l} className="rounded-xl border bg-card p-3 text-center">
-              <div className="text-xs font-bold uppercase text-muted-foreground">{l}</div>
-              <div className={`mt-1 text-sm font-bold ${c}`}>{v}</div>
-            </div>
-          ))}
-        </div>
-        <div className="p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{tr("Cross-disciplinary timeline")}</h3>
-            <Button variant="link" className="h-auto p-0" onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> {addLabel}</Button>
-          </div>
-          <ol className="relative space-y-4 before:absolute before:bottom-2 before:left-[9px] before:top-2 before:w-0.5 before:bg-border">
-            {sorted.map((n) => (
-              <li key={n.id} className="relative ps-8">
-                <span className="absolute left-0 top-4 h-5 w-5 rounded-full border-2 border-primary bg-card" />
-                <div className="rounded-xl border bg-muted/30 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="rounded-md bg-info-soft px-2 py-0.5 text-xs font-bold text-info">{tr(n.role)}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(n.at).toLocaleString(lang, { dateStyle: "medium", timeStyle: "short" })}</span>
-                  </div>
-                  <div className="mt-2 font-bold">{n.author}</div>
-                  <p className="text-base text-muted-foreground">{tr(n.text)}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent lang={lang} dir="ltr">
-          <DialogHeader>
-            <DialogTitle>{tr("Bedside note")}</DialogTitle>
-          </DialogHeader>
-          <Textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder={tr("e.g. Ate half of lunch, no cough during meal. Repositioned at 2 PM.")} />
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                if (!text.trim()) return;
-                addNote({ author: PATIENT.proxy, role: "Family caregiver (proxy)", text: text.trim() });
-                setText("");
-                setOpen(false);
-                toast.success(tr("Note added to the health passport"));
-              }}
-            >
-              {tr("Save note")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 function Costs({ title }: { title: string }) {
   const { tr } = usePortalLanguage();

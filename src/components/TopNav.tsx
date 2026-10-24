@@ -1,6 +1,8 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Activity } from "lucide-react";
 import { usePortalLanguage } from "@/lib/portal-language";
+import { Passport } from "@/components/PassportSheet";
+import { UNIT } from "@/lib/care-data";
 
 export function TopNav() {
   const { tr } = usePortalLanguage();
@@ -24,7 +26,8 @@ export function TopNav() {
           <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
           {text("Active • HL7 FHIR R4 connection (demo)")}
         </span>
-        <nav className="ml-auto flex gap-1">
+        <nav className="ml-auto flex items-center gap-1">
+          {!patientPage && <Passport compact title="Unified Health Passport" addLabel="Add Provider Note" tr={(v) => v} author={{ name: UNIT.name, role: `NEMT ${UNIT.id}` }} />}
           <Link to="/" className={tab} activeOptions={{ exact: true }} activeProps={{ className: "bg-secondary text-secondary-foreground" }}>
             {text("Patient Hub")}
           </Link>
