@@ -95,10 +95,11 @@ function PatientHub() {
           <div className="flex items-center gap-2 rounded-xl bg-primary-foreground/15 p-1" role="group" aria-label="Language">
             <Languages className="mx-2 h-5 w-5" />
             {(["en", "es", "ar"] as Lang[]).map((l) => (
-              <Button variant="outline"
+              <Button variant="ghost"
                 key={l}
                 onClick={() => setLang(l)}
-                className={`rounded-lg px-3 py-2 text-sm font-bold ${lang === l ? "bg-primary-foreground text-primary" : ""}`}
+                aria-pressed={lang === l}
+                className={`rounded-lg px-3 py-2 text-sm font-bold ${lang === l ? "bg-primary-foreground text-primary hover:bg-primary-foreground hover:text-primary" : "text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"}`}
               >
                 {l === "en" ? "English" : l === "es" ? "Español" : "العربية"}
               </Button>
@@ -350,7 +351,7 @@ function Passport({ title, addLabel, tr }: { title: string; addLabel: string; tr
   return (
     <Sheet>
       <SheetTrigger asChild><Button variant="outline" size="lg" className="h-auto min-h-12 w-full justify-start whitespace-normal text-start"><BookOpen className="h-5 w-5 shrink-0" />{title}</Button></SheetTrigger>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg" dir="ltr" lang={lang}>
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg" dir="ltr" lang={lang} closeLabel={tr("Close")}>
         <SheetHeader className="mb-5 pr-6"><SheetTitle>{title}</SheetTitle><SheetDescription>{tr("Longitudinal record • SMART on FHIR (demo)")}</SheetDescription></SheetHeader>
       <ol className="space-y-3 border-s-2 ps-4">
         {sorted.map((n) => (

@@ -2,6 +2,8 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 
 export type Lang = "en" | "es" | "ar";
 const dictionary: Record<string, [string, string]> = {
+  "Close": ["Cerrar", "إغلاق"],
+  "Translation is temporarily unavailable. Please try again.": ["La traducción no está disponible temporalmente. Inténtelo de nuevo.", "الترجمة غير متاحة مؤقتًا. يرجى المحاولة مجددًا."],
   "Detroit Regional Care & Mobility Grid": ["Red regional de atención y movilidad de Detroit", "شبكة الرعاية والتنقل الإقليمية في ديترويت"],
   "Active • HL7 FHIR R4 connection (demo)": ["Activo • Conexión HL7 FHIR R4 (demo)", "نشط • اتصال HL7 FHIR R4 (تجريبي)"],
   "Patient Hub": ["Portal del paciente", "بوابة المريض"], "Provider Hub": ["Portal del proveedor", "بوابة مقدم الرعاية"],
