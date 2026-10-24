@@ -6,7 +6,8 @@ const GEMMA_MODELS = ["gemma-4-26b-a4b-it", "gemma-4-31b-it"];
 
 async function gemma(prompt: string): Promise<string> {
   let lastErr: unknown;
-  for (const model of GEMMA_MODELS) {
+  // Google's free tier often returns 500/503 under load: try each model twice.
+  for (const model of [...GEMMA_MODELS, ...GEMMA_MODELS]) {
     try {
       return await gemmaOnce(model, prompt);
     } catch (e) {
@@ -41,6 +42,7 @@ async function gemmaOnce(model: string, prompt: string): Promise<string> {
     console.error("Gemma error", res.status, t);
     if (res.status === 429) throw new Error("Gemma's free limit was reached. Try again in a minute.");
     if (res.status === 400 || res.status === 403) throw new Error("Gemma key was rejected by Google AI Studio.");
+    if (res.status >= 500) throw new Error("Gemma is busy on Google's side. Please try again shortly.");
     throw new Error("AI request failed.");
   }
   const json = (await res.json()) as {
