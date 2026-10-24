@@ -127,7 +127,7 @@ function PatientHub() {
             <Section title={t.tracker} aside={active && <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">#{active.id}</span>}>
               {ts.stage < 0 ? (
                 <p className="text-muted-foreground">
-                  {active ? `#${active.id} — ${tr("Waiting for a provider to claim your request.")}` : tr("No active request yet.")}
+                  {active ? `#${active.id} — ${tr(statusText)}` : tr(statusText)}
                 </p>
               ) : (
                 <div className="space-y-5">
