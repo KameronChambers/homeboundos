@@ -46,7 +46,7 @@ async function gemmaOnce(model: string, prompt: string): Promise<string> {
 }
 
 // Gemma has no JSON mode, so pull the first JSON value out of its reply.
-function extractJson<T>(text: string): T {
+function extractJson<T>(text: string, ok: (v: unknown) => boolean): T {
   const cleaned = text.replace(/```(?:json)?/g, "");
   // Gemma may reason before answering; try candidate JSON values from the end.
   for (let i = cleaned.length - 1; i >= 0; i--) {
@@ -55,7 +55,8 @@ function extractJson<T>(text: string): T {
     const end = cleaned.lastIndexOf(ch === "[" ? "]" : "}");
     if (end <= i) continue;
     try {
-      return JSON.parse(cleaned.slice(i, end + 1)) as T;
+      const v: unknown = JSON.parse(cleaned.slice(i, end + 1));
+      if (ok(v)) return v as T;
     } catch {
       /* keep looking */
     }
@@ -90,7 +91,9 @@ Service: ${data.service}
 Mobility tier: ${data.mobility}
 Booking note: ${data.note}`;
     try {
-      const out = extractJson<{ chips: TriageChip[] }>(await gemma(prompt));
+      const out = extractJson<{ chips: TriageChip[] }>(await gemma(prompt), (v) =>
+        Array.isArray((v as { chips?: unknown })?.chips),
+      );
       const levels = ["critical", "caution", "barrier", "clinical"];
       return {
         chips: (out.chips ?? []).filter((c) => levels.includes(c.level) && c.title).slice(0, 5),
@@ -113,7 +116,10 @@ Return ONLY a JSON array of ${data.texts.length} translated strings in the same 
 
 ${JSON.stringify(data.texts)}`;
     try {
-      const arr = extractJson<string[]>(await gemma(prompt));
+      const arr = extractJson<string[]>(
+        await gemma(prompt),
+        (v) => Array.isArray(v) && v.length === data.texts.length && v[0] !== data.texts[0],
+      );
       if (!Array.isArray(arr) || arr.length !== data.texts.length) throw new Error("Translation was incomplete.");
       return { texts: arr.map(String) };
     } catch (e) {
