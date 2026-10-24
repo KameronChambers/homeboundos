@@ -388,7 +388,7 @@ function Costs({ title }: { title: string }) {
   const lines = [
     { label: "Medicare home health services (Part A/B) — $0 copay for eligible homebound patients", amt: "$0.00" },
     { label: "Michigan Medicaid NEMT benefit — HCPCS T2005 (stretcher van)", amt: "$0.00" },
-    { label: "Mechanical patient lift rental — HCPCS E0630 (Medicare Part B DME, after deductible)", amt: "$0.00" },
+    { label: "Mechanical patient lift — HCPCS E0630 (Medicare Part B DME 20% coinsurance, paid by Medicaid as secondary)", amt: "$0.00" },
   ];
   return (
     <Section title={title}>
