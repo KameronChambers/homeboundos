@@ -268,7 +268,7 @@ export function tripState(kind: TripKind, dispatchedAt: number | null, now: numb
   const segs = kind === "none" ? [] : TRIPS[kind];
   const stages = segs.map((x) => x.stage);
   const at = (p: Place) => (p === "home" ? HOME : HOSPITAL);
-  if (!segs.length || !dispatchedAt) return { stage: -1, stages, status: "", pos: { lat: HOSPITAL.lat, lng: HOSPITAL.lng }, etaMin: UNIT.etaMin };
+  if (!segs.length || dispatchedAt == null) return { stage: -1, stages, status: "", pos: { lat: HOSPITAL.lat, lng: HOSPITAL.lng }, etaMin: UNIT.etaMin };
   let t = now - dispatchedAt;
   for (let i = 0; i < segs.length; i++) {
     const seg = segs[i];
