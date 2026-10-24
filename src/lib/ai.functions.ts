@@ -1,91 +1,78 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-// Streams a Lovable AI Gateway Responses call and returns the final text.
-async function streamResponseText(body: Record<string, unknown>): Promise<string> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("AI is not configured.");
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": key,
-      "X-Lovable-AIG-SDK": "fetch",
+// Free Gemma model on Google AI Studio (Gemini API).
+const GEMMA_MODEL = "gemma-3-27b-it";
+
+async function gemma(prompt: string): Promise<string> {
+  const key = process.env.GEMMA_API_KEY;
+  if (!key) throw new Error("Gemma key is not configured.");
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMMA_MODEL}:generateContent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+      }),
     },
-    body: JSON.stringify({ model: "openai/gpt-6-astra", stream: true, store: false, reasoning: { effort: "low" }, ...body }),
-  });
-  if (!res.ok || !res.body) {
+  );
+  if (!res.ok) {
     const t = await res.text().catch(() => "");
-    console.error("AI gateway error", res.status, t);
-    if (res.status === 429) throw new Error("AI is busy right now. Please try again in a moment.");
-    if (res.status === 402) throw new Error("AI credits are used up. Add credits in Settings → Plans & credits.");
+    console.error("Gemma error", res.status, t);
+    if (res.status === 429) throw new Error("Gemma's free limit was reached. Try again in a minute.");
+    if (res.status === 400 || res.status === 403) throw new Error("Gemma key was rejected by Google AI Studio.");
     throw new Error("AI request failed.");
   }
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = "";
-  let out = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split("\n");
-    buf = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data:")) continue;
-      const d = line.slice(5).trim();
-      if (!d || d === "[DONE]") continue;
-      try {
-        const ev = JSON.parse(d);
-        if (ev.type === "response.output_text.delta") out += ev.delta;
-      } catch {
-        /* ignore partial */
-      }
-    }
-  }
-  return out;
+  const json = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
+  return json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
 }
 
-const chipSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["chips"],
-  properties: {
-    chips: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["level", "category", "title", "detail"],
-        properties: {
-          level: { type: "string", enum: ["critical", "caution", "barrier"] },
-          category: { type: "string", enum: ["Mobility Warning", "Equipment Alert", "Environmental Barrier", "Clinical Precaution"] },
-          title: { type: "string" },
-          detail: { type: "string" },
-        },
-      },
-    },
-  },
-};
+// Gemma has no JSON mode, so pull the first JSON value out of its reply.
+function extractJson<T>(text: string): T {
+  const cleaned = text.replace(/```(?:json)?/g, "");
+  const start = cleaned.search(/[[{]/);
+  const open = cleaned[start];
+  const end = cleaned.lastIndexOf(open === "[" ? "]" : "}");
+  if (start < 0 || end < start) throw new Error("AI returned an unreadable answer.");
+  return JSON.parse(cleaned.slice(start, end + 1)) as T;
+}
 
 export type TriageChip = {
-  level: "critical" | "caution" | "barrier";
+  level: "critical" | "caution" | "barrier" | "clinical";
   category: string;
   title: string;
   detail: string;
 };
 
 export const runTriage = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ note: z.string().min(1).max(4000), mobility: z.string().max(200) }).parse(d))
+  .inputValidator((d) =>
+    z.object({ note: z.string().min(1).max(4000), mobility: z.string().max(200), service: z.string().max(100) }).parse(d),
+  )
   .handler(async ({ data }): Promise<{ chips: TriageChip[]; error?: string }> => {
+    const prompt = `You are a clinical dispatch triage assistant for in-home care and non-emergency medical transportation (NEMT) in Detroit, Michigan.
+Read the booking note and extract the operational factors a dispatcher must plan for: transfer/mobility risk, required bed or stretcher size, lift or equipment needs (e.g. mechanical patient lift, oxygen), home environment barriers, and clinical precautions.
+Rules:
+- Use only facts stated in the note. Do not invent diagnoses or numbers.
+- Use standard, publicly recognized terminology (e.g. "bariatric", "non-ambulatory", "2-person assist", "mechanical (Hoyer) lift", "fall risk", "aspiration precaution", "supplemental oxygen").
+- For bed/stretcher sizing use public reference ranges: standard hospital bed ~36 in wide (about 350–450 lb capacity); bariatric bed 42–54 in wide (600–1000 lb). Only recommend bariatric if weight or size in the note supports it.
+- level: "critical" = mobility/transfer risk, "caution" = equipment, "barrier" = home environment, "clinical" = clinical precaution.
+- category is one of: "Mobility Warning", "Equipment Alert", "Environmental Barrier", "Clinical Precaution".
+- title: short (max 8 words). detail: one concise sentence.
+Return 2 to 5 items as ONLY a JSON object: {"chips":[{"level":"...","category":"...","title":"...","detail":"..."}]}
+
+Service: ${data.service}
+Mobility tier: ${data.mobility}
+Booking note: ${data.note}`;
     try {
-      const text = await streamResponseText({
-        instructions:
-          "You are a clinical dispatch triage assistant for in-home care and NEMT transport in Detroit. Extract operational precautions from the booking note. Use 'critical' for mobility/transfer risks, 'caution' for equipment/oxygen, 'barrier' for home environment obstacles. Titles are short and punchy (e.g. 'Strict Bed-Bound • 2-Person Hydraulic Lift Mandatory'); details are one concise sentence. Return 2-4 chips. Only use facts from the note.",
-        input: `Mobility tier: ${data.mobility}\nBooking note: ${data.note}`,
-        text: { format: { type: "json_schema", name: "triage", strict: true, schema: chipSchema } },
-      });
-      return JSON.parse(text);
+      const out = extractJson<{ chips: TriageChip[] }>(await gemma(prompt));
+      const levels = ["critical", "caution", "barrier", "clinical"];
+      return {
+        chips: (out.chips ?? []).filter((c) => levels.includes(c.level) && c.title).slice(0, 5),
+      };
     } catch (e) {
       return { chips: [], error: e instanceof Error ? e.message : "AI triage failed." };
     }
@@ -96,27 +83,17 @@ export const translateTexts = createServerFn({ method: "POST" })
     z.object({ language: z.enum(["es", "ar"]), texts: z.array(z.string().max(2000)).max(40) }).parse(d),
   )
   .handler(async ({ data }): Promise<{ texts: string[]; error?: string }> => {
-    const lang = data.language === "es" ? "Spanish" : "Arabic (Modern Standard)";
+    const lang = data.language === "es" ? "Spanish (Latin American)" : "Modern Standard Arabic";
+    const prompt = `Translate each string in the JSON array into ${lang} for a patient's family caregiver.
+Use compassionate, plain-language wording with correct, commonly used medical terms in ${lang}.
+Keep unchanged: people's names, numbers, units (mmHg, lb, in, L/min), dates, and codes or abbreviations (HCPCS, E0630, BP, SpO2, NYHA, RN, PT, MD).
+Return ONLY a JSON array of ${data.texts.length} translated strings in the same order.
+
+${JSON.stringify(data.texts)}`;
     try {
-      const text = await streamResponseText({
-        instructions: `Translate each string into ${lang} for a patient's family caregiver. Use culturally appropriate, compassionate, plain-language medical terminology. Keep proper names, numbers, units and codes (e.g. HCPCS, BP, SpO2) unchanged. Return the same number of strings in the same order.`,
-        input: JSON.stringify(data.texts),
-        text: {
-          format: {
-            type: "json_schema",
-            name: "translations",
-            strict: true,
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              required: ["texts"],
-              properties: { texts: { type: "array", items: { type: "string" } } },
-            },
-          },
-        },
-      });
-      const parsed = JSON.parse(text) as { texts: string[] };
-      return { texts: parsed.texts };
+      const arr = extractJson<string[]>(await gemma(prompt));
+      if (!Array.isArray(arr) || arr.length !== data.texts.length) throw new Error("Translation was incomplete.");
+      return { texts: arr.map(String) };
     } catch (e) {
       return { texts: [], error: e instanceof Error ? e.message : "Translation failed." };
     }
