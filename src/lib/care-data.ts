@@ -60,6 +60,7 @@ export type Ticket = {
   createdAt: number;
   status: "queued" | "dispatched";
   unit?: string | undefined;
+  transport?: boolean | undefined;
 };
 
 export type PassportNote = {
@@ -232,25 +233,54 @@ export function liftCosts(voucherApplied: boolean) {
   return { lift, voucher, total: lift - voucher };
 }
 
-// Demo timeline after dispatch (compressed so the demo moves visibly).
-export const STAGES = ["Assigned", "En Route", "Arrived", "Visit In Progress", "Completed"] as const;
-export const STAGE_MS = { assigned: 5000, enRoute: 42000, arrived: 10000, visit: 30000 };
+// Demo trip plans after dispatch (compressed so the demo moves visibly). The van always starts at the hospital.
+export type TripKind = "home" | "office" | "none";
+type Place = "hospital" | "home";
+type Segment = { stage: string; status: string; from: Place; to: Place; ms: number };
 
-export function trackerState(dispatchedAt: number | null, now: number) {
-  if (!dispatchedAt) return { stage: -1, progress: 0, etaMin: UNIT.etaMin };
-  const t = now - dispatchedAt;
-  const a = STAGE_MS.assigned;
-  const e = a + STAGE_MS.enRoute;
-  const r = e + STAGE_MS.arrived;
-  const v = r + STAGE_MS.visit;
-  if (t < a) return { stage: 0, progress: 0, etaMin: UNIT.etaMin };
-  if (t < e) {
-    const p = (t - a) / STAGE_MS.enRoute;
-    return { stage: 1, progress: p, etaMin: Math.max(1, Math.ceil(UNIT.etaMin * (1 - p))) };
+export function tripKind(t?: { mode: Ticket["mode"]; service: string; transport?: boolean | undefined }): TripKind {
+  if (!t) return "none";
+  if (t.mode === "Home") return "home";
+  if (t.mode === "Office" && t.transport !== false && t.service === "NEMT Transport") return "office";
+  return "none";
+}
+
+const S = { wait: 5000, drive: 20000, care: 20000 };
+export const TRIPS: Record<Exclude<TripKind, "none">, Segment[]> = {
+  home: [
+    { stage: "Assigned", status: "Your provider has been assigned and is leaving the hospital.", from: "hospital", to: "hospital", ms: S.wait },
+    { stage: "En Route", status: "Your provider is on the way to your home.", from: "hospital", to: "home", ms: S.drive },
+    { stage: "Care In Progress", status: "Your provider has arrived and care is in progress.", from: "home", to: "home", ms: S.care },
+    { stage: "Returning", status: "Care finished. The unit is returning to the hospital.", from: "home", to: "hospital", ms: S.drive },
+    { stage: "Completed", status: "Your care visit is complete.", from: "hospital", to: "hospital", ms: 0 },
+  ],
+  office: [
+    { stage: "Assigned", status: "Your transport has been assigned and is leaving the hospital.", from: "hospital", to: "hospital", ms: S.wait },
+    { stage: "Picking Up", status: "The van is on the way to pick you up.", from: "hospital", to: "home", ms: S.drive },
+    { stage: "To Hospital", status: "You are being transported to the hospital.", from: "home", to: "hospital", ms: S.drive },
+    { stage: "Care In Progress", status: "You have arrived and care is in progress.", from: "hospital", to: "hospital", ms: S.care },
+    { stage: "Returning Home", status: "Care finished. You are being driven home.", from: "hospital", to: "home", ms: S.drive },
+    { stage: "Completed", status: "You are home. Your care visit is complete.", from: "home", to: "home", ms: 0 },
+  ],
+};
+
+export function tripState(kind: TripKind, dispatchedAt: number | null, now: number) {
+  const segs = kind === "none" ? [] : TRIPS[kind];
+  const stages = segs.map((x) => x.stage);
+  const at = (p: Place) => (p === "home" ? HOME : HOSPITAL);
+  if (!segs.length || !dispatchedAt) return { stage: -1, stages, status: "", pos: { lat: HOSPITAL.lat, lng: HOSPITAL.lng }, etaMin: UNIT.etaMin };
+  let t = now - dispatchedAt;
+  for (let i = 0; i < segs.length; i++) {
+    const seg = segs[i];
+    if (t < seg.ms || i === segs.length - 1) {
+      const p = seg.ms ? Math.min(1, Math.max(0, t / seg.ms)) : 1;
+      const a = at(seg.from), b = at(seg.to);
+      const etaMin = i === 0 ? UNIT.etaMin : i === 1 ? Math.max(1, Math.ceil(UNIT.etaMin * (1 - p))) : 0;
+      return { stage: i, stages, status: seg.status, pos: { lat: a.lat + (b.lat - a.lat) * p, lng: a.lng + (b.lng - a.lng) * p }, etaMin };
+    }
+    t -= seg.ms;
   }
-  if (t < r) return { stage: 2, progress: 1, etaMin: 0 };
-  if (t < v) return { stage: 3, progress: 1, etaMin: 0 };
-  return { stage: 4, progress: 1, etaMin: 0 };
+  throw new Error("unreachable");
 }
 
 export function waitLabel(ms: number) {

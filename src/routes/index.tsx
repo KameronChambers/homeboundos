@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCare, useNow } from "@/lib/care-store";
 import { Passport } from "@/components/PassportSheet";
-import { NEMT_HCPCS, PATIENT, SERVICES, STAGES, UNIT, trackerState, liftCosts, type Mobility, type ServiceType } from "@/lib/care-data";
+import { NEMT_HCPCS, PATIENT, SERVICES, UNIT, tripKind, tripState, liftCosts, type Mobility, type ServiceType } from "@/lib/care-data";
 import { translateTexts } from "@/lib/ai.functions";
 
 const DetroitMap = lazy(() => import("@/components/DetroitMap"));
@@ -77,8 +77,9 @@ function PatientHub() {
   const tr = (s: string) => (lang === "en" ? s : translated[`${lang}:${s}`] ?? localize(s, lang));
   const trackerRef = useRef<HTMLDivElement>(null);
   const active = care.tickets.find((x) => x.id === care.activeTicketId);
-  const ts = trackerState(care.dispatchedAt, now);
-  const statusText = ["Your provider has been assigned.", "Your provider is on the way.", "Your provider has arrived.", "Your care visit is in progress.", "Your care visit is complete."][ts.stage] ?? "Waiting for a provider to claim your request.";
+  const kind = tripKind(active);
+  const ts = tripState(kind, care.dispatchedAt, now);
+  const statusText = !active ? "No active request yet." : kind === "none" ? "This visit does not need a van, so there is nothing to track." : ts.stage < 0 ? "Waiting for a provider to claim your request." : ts.status;
 
   return (
     <main dir="ltr" lang={lang} className="mx-auto max-w-7xl space-y-6 px-4 py-6">
@@ -130,8 +131,8 @@ function PatientHub() {
                 </p>
               ) : (
                 <div className="space-y-5">
-                  <ol className="grid grid-cols-5 gap-2">
-                    {STAGES.map((s, i) => (
+                  <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${ts.stages.length}, minmax(0, 1fr))` }}>
+                    {ts.stages.map((s, i) => (
                       <li key={s} className="space-y-2 text-center">
                         <div className={`h-2 rounded-full ${i <= ts.stage ? "bg-primary" : "bg-muted"}`} />
                         <div className={`text-xs font-bold md:text-sm ${i <= ts.stage ? "text-foreground" : "text-muted-foreground"}`}>
@@ -170,11 +171,11 @@ function PatientHub() {
                     <span>{tr(statusText)}</span>
                     <span className="text-muted-foreground">{tr("Demo progress")}</span>
                   </div>
-                  <Progress value={ts.stage < 0 ? 0 : (ts.stage + 1) * 20} aria-label={t.tracker} />
+                  <Progress value={ts.stage < 0 ? 0 : ((ts.stage + 1) / ts.stages.length) * 100} aria-label={t.tracker} />
                 </div>
                 <ClientOnly fallback={<div className="h-72 rounded-xl bg-muted" />}>
                   <Suspense fallback={<div className="h-72 rounded-xl bg-muted" />}>
-                    <DetroitMap progress={ts.progress} homeLabel={tr("Home • Morningside (48224)")} destinationLabel={tr("Destination: Henry Ford Hospital • 2799 W Grand Blvd, Detroit, MI 48202")} mapLabel={tr("Map of Detroit transport route")} />
+                    <DetroitMap pos={ts.pos} homeLabel={tr("Home • Morningside (48224)")} destinationLabel={tr("Destination: Henry Ford Hospital • 2799 W Grand Blvd, Detroit, MI 48202")} mapLabel={tr("Map of Detroit transport route")} />
                   </Suspense>
                 </ClientOnly>
               </div>
@@ -238,6 +239,7 @@ function RequestCare({ title, submitLabel, onView }: { title: string; submitLabe
         zip: PATIENT.zip,
         service: isOffice && transport ? "NEMT Transport" : service,
         mode,
+        transport: isOffice ? transport : undefined,
         urgency,
         scheduledAt: when ? new Date(when).toLocaleString() : undefined,
         note:

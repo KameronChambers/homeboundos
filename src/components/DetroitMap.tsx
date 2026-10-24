@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { HOME, HOSPITAL } from "@/lib/care-data";
 
 // Browser-only: rendered via React.lazy behind <ClientOnly>.
-export default function DetroitMap({ progress, homeLabel = HOME.label, destinationLabel = HOSPITAL.label, mapLabel = "Map of Detroit transport route" }: { progress: number; homeLabel?: string; destinationLabel?: string; mapLabel?: string }) {
+export default function DetroitMap({ pos, homeLabel = HOME.label, destinationLabel = HOSPITAL.label, mapLabel = "Map of Detroit transport route" }: { pos: { lat: number; lng: number }; homeLabel?: string; destinationLabel?: string; mapLabel?: string }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<LMap | null>(null);
   const van = useRef<Marker | null>(null);
@@ -36,9 +36,9 @@ export default function DetroitMap({ progress, homeLabel = HOME.label, destinati
           [HOME.lat, HOME.lng],
           [HOSPITAL.lat, HOSPITAL.lng],
         ],
-        { dashArray: "8 8", weight: 4, color: "#2f7d64" },
+        { dashArray: "8 8", weight: 4, color: "#2b5fb8" },
       ).addTo(m);
-      van.current = L.marker([HOME.lat, HOME.lng], { icon: pin("🚐") }).addTo(m);
+      van.current = L.marker([pos.lat, pos.lng], { icon: pin("🚐") }).addTo(m);
       map.current = m;
     });
     return () => {
@@ -54,9 +54,8 @@ export default function DetroitMap({ progress, homeLabel = HOME.label, destinati
   }, [homeLabel, destinationLabel]);
 
   useEffect(() => {
-    const p = Math.min(1, Math.max(0, progress));
-    van.current?.setLatLng([HOME.lat + (HOSPITAL.lat - HOME.lat) * p, HOME.lng + (HOSPITAL.lng - HOME.lng) * p]);
-  }, [progress]);
+    van.current?.setLatLng([pos.lat, pos.lng]);
+  }, [pos.lat, pos.lng]);
 
   return <div ref={el} className="h-72 w-full overflow-hidden rounded-xl border" aria-label={mapLabel} />;
 }
