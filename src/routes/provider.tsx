@@ -14,6 +14,8 @@ export const Route = createFileRoute("/provider")({
       { title: "Provider Hub — HomeBound OS Dispatch" },
       { name: "description", content: "Regional dispatch queue for Detroit in-home care and NEMT with AI triage of patient risks and equipment needs." },
       { property: "og:title", content: "Provider Hub — HomeBound OS Dispatch" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { property: "og:description", content: "Claim and dispatch Detroit care requests with AI-flagged mobility, equipment and home risks." },
     ],
   }),
@@ -31,7 +33,7 @@ function ProviderHub() {
   const care = useCare();
   const now = useNow(15000);
   const [zip, setZip] = useState("all");
-  const [sort, setSort] = useState<SortKey>("longest");
+  const [sort, setSort] = useState<SortKey>("recent");
 
   const list = sortTickets(care.tickets.filter((t) => zip === "all" || t.zip === zip), sort, now || Date.now());
   const field = "rounded-md border bg-background px-2 py-1.5 text-sm";
@@ -55,10 +57,10 @@ function ProviderHub() {
             ))}
           </select>
           <select className={field} value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort">
-            <option value="longest">Longest wait</option>
-            <option value="shortest">Shortest wait</option>
-            <option value="recent">Most recent</option>
+            <option value="recent">Most Recent</option>
             <option value="oldest">Oldest</option>
+            <option value="urgencyHigh">High → Low Urgency</option>
+            <option value="urgencyLow">Low → High Urgency</option>
           </select>
           <Button variant="ghost" size="sm" onClick={care.reset}>
             <RefreshCw className="h-4 w-4" /> Reset demo
