@@ -271,7 +271,7 @@ export function tripState(kind: TripKind, dispatchedAt: number | null, now: numb
   if (!segs.length || dispatchedAt == null) return { stage: -1, stages, status: "", pos: { lat: HOSPITAL.lat, lng: HOSPITAL.lng }, etaMin: UNIT.etaMin };
   let t = now - dispatchedAt;
   for (let i = 0; i < segs.length; i++) {
-    const seg = segs[i];
+    const seg = segs[i]!;
     if (t < seg.ms || i === segs.length - 1) {
       const p = seg.ms ? Math.min(1, Math.max(0, t / seg.ms)) : 1;
       const a = at(seg.from), b = at(seg.to);
