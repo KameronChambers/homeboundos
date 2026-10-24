@@ -16,11 +16,11 @@ type Ctx = State & {
   reset: () => void;
 };
 
-const KEY = "homebound-os-state-v1";
+const KEY = "homebound-os-state-v2";
 const CareContext = createContext<Ctx | null>(null);
 
 function fresh(): State {
-  return { tickets: seedTickets(), notes: seedNotes(), activeTicketId: "T-1042", dispatchedAt: null };
+  return { tickets: seedTickets(), notes: seedNotes(), activeTicketId: null, dispatchedAt: null };
 }
 
 export function CareProvider({ children }: { children: ReactNode }) {

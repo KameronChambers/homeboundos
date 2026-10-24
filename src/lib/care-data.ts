@@ -110,19 +110,6 @@ export function seedTickets(): Ticket[] {
   const n = now0();
   return [
     {
-      id: "T-1042",
-      patient: "George Maxwell",
-      age: 68,
-      zip: "48224",
-      service: "NEMT Transport",
-      mode: "Office",
-      urgency: "Immediate",
-      note: "Bed-bound, 260 lb. Needs 2-person transfer with Hoyer lift and stretcher van. Portable oxygen 2 L/min via nasal cannula. 4 front porch steps, no ramp; narrow hallway (~32 in). Cardiology follow-up at Henry Ford Hospital.",
-      mobility: "Stretcher",
-      createdAt: n - 38 * 60000,
-      status: "queued",
-    },
-    {
       id: "T-1043",
       patient: "Rosa Delgado",
       age: 74,
@@ -175,6 +162,20 @@ export function seedTickets(): Ticket[] {
       note: "CKD stage 3b, on fluid restriction 1.5 L/day. Telehealth visit; low-bandwidth connection.",
       mobility: "Ambulatory",
       createdAt: n - 15 * 60000,
+      status: "queued",
+    },
+    {
+      id: "T-1047",
+      patient: "Evelyn Ward",
+      age: 79,
+      zip: "48214",
+      service: "Mobile Dentist",
+      mode: "Home",
+      urgency: "Scheduled",
+      scheduledAt: "Tomorrow 13:00",
+      note: "Homebound; ill-fitting complete upper denture causing sore spots. Moderate dementia (needs caregiver present). Uses wheelchair indoors.",
+      mobility: "Wheelchair",
+      createdAt: n - 47 * 60000,
       status: "queued",
     },
   ];
