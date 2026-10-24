@@ -54,12 +54,12 @@ export type Ticket = {
   service: ServiceType;
   mode: "Home" | "Office" | "Virtual";
   urgency: "Immediate" | "Scheduled";
-  scheduledAt?: string;
+  scheduledAt?: string | undefined;
   note: string;
   mobility: string;
   createdAt: number;
   status: "queued" | "dispatched";
-  unit?: string;
+  unit?: string | undefined;
 };
 
 export type PassportNote = {

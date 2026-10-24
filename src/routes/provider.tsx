@@ -86,7 +86,10 @@ function TicketRow({ t, now }: { t: Ticket; now: number }) {
     setLoading(true);
     const r = await runTriage({ data: { note: t.note, mobility: t.mobility, service: t.service } });
     setLoading(false);
-    if (r.error) return toast.error(r.error);
+    if (r.error) {
+      toast.error(r.error);
+      return;
+    }
     setChips(r.chips);
   };
 

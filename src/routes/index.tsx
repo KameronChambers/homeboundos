@@ -25,7 +25,8 @@ export const Route = createFileRoute("/")({
 });
 
 type Lang = "en" | "es" | "ar";
-const UI: Record<Lang, Record<string, string>> = {
+type UIKey = "request" | "tracker" | "passport" | "cost" | "care" | "submit" | "addNote" | "loggedIn";
+const UI: Record<Lang, Record<UIKey, string>> = {
   en: { request: "Request Care", tracker: "Live Fulfillment Tracker", passport: "Unified Health Passport", cost: "Cost Breakdown", care: "Care Instructions", submit: "Submit Request", addNote: "Add Bedside Note", loggedIn: "Logged in as" },
   es: { request: "Solicitar atención", tracker: "Seguimiento en vivo", passport: "Pasaporte de salud unificado", cost: "Desglose de costos", care: "Instrucciones de cuidado", submit: "Enviar solicitud", addNote: "Agregar nota", loggedIn: "Sesión iniciada como" },
   ar: { request: "طلب رعاية", tracker: "متابعة مباشرة", passport: "جواز السفر الصحي الموحد", cost: "تفاصيل التكلفة", care: "تعليمات الرعاية", submit: "إرسال الطلب", addNote: "إضافة ملاحظة", loggedIn: "تم تسجيل الدخول باسم" },
@@ -60,7 +61,10 @@ function PatientHub() {
     setTranslating(true);
     translateTexts({ data: { language: lang, texts: missing } })
       .then((r) => {
-        if (r.error) return toast.error(r.error);
+        if (r.error) {
+          toast.error(r.error);
+          return;
+        }
         setTranslated((prev) => {
           const n = { ...prev };
           missing.forEach((s, i) => (n[`${lang}:${s}`] = r.texts[i]));
@@ -212,7 +216,10 @@ function RequestCare({ title, submitLabel, onView }: { title: string; submitLabe
   const [phase, setPhase] = useState<"idle" | "routing" | "done">("idle");
 
   const submit = () => {
-    if (urgency === "Scheduled" && !when) return toast.error("Choose a date and time.");
+    if (urgency === "Scheduled" && !when) {
+      toast.error("Choose a date and time.");
+      return;
+    }
     setPhase("routing");
     setTimeout(() => {
       const isOffice = mode === "Office";
