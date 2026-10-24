@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 // Free Gemma model on Google AI Studio (Gemini API).
-const GEMMA_MODELS = ["gemma-4-31b-it", "gemma-4-26b-a4b-it"];
+const GEMMA_MODELS = ["gemma-4-26b-a4b-it", "gemma-4-31b-it"];
 
 async function gemma(prompt: string): Promise<string> {
   let lastErr: unknown;
@@ -27,7 +27,12 @@ async function gemmaOnce(model: string, prompt: string): Promise<string> {
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json",
+          thinkingConfig: { thinkingLevel: "minimal" },
+        },
       }),
     },
   );
